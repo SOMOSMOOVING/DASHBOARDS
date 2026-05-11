@@ -460,11 +460,6 @@
         <div id="facturasContador" style="margin-top:10px;font-size:12px;color:var(--muted);text-align:right;"></div>
       </div>
 
-<!-- ══════════════════════════════════════════ -->
-<!-- PAGE: STOCK                               -->
-<!-- ══════════════════════════════════════════ -->
-<div id="page-stock" style="display:none;">
-  <div id="stockKpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;"></div>
 
   <!-- Filtros -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
@@ -493,6 +488,42 @@
       <div id="stockContador" style="font-size:11px;color:var(--muted);"></div>
     </div>
     <!-- Header -->
+    <div style="display:grid;grid-template-columns:2fr 120px 1fr 130px 130px 130px;gap:8px;padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--border);">
+      <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;">Producto</span>
+      <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;">Código</span>
+      <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;">Depósito</span>
+      <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;text-align:right;">Cantidad</span>
+      <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;text-align:right;">Precio Unit.</span>
+      <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;text-align:right;">Valor Total</span>
+    </div>
+    <div id="stockRows"></div>
+    <div id="stockEmpty" style="display:none;padding:40px;text-align:center;color:var(--muted);font-size:13px;">No se encontraron productos</div>
+  </div>
+</div>
+
+
+<!-- PAGE: STOCK -->
+<div id="page-stock" style="display:none;padding:24px;">
+  <div id="stockKpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;"></div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+    <div style="flex:1;min-width:180px;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Depósito</div>
+      <select id="stockDeposito" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit;" onchange="filtrarStock()"><option value="">Todos</option></select>
+    </div>
+    <div style="flex:1;min-width:180px;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Familia</div>
+      <select id="stockFamilia" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit;" onchange="filtrarStock()"><option value="">Todas</option></select>
+    </div>
+    <div style="flex:2;min-width:200px;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Buscar producto</div>
+      <input id="stockBuscar" type="text" placeholder="Nombre o código..." style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit;" oninput="filtrarStock()">
+    </div>
+  </div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);">
+      <div style="font-size:13px;font-weight:600;color:var(--text);">Detalle de Stock</div>
+      <div id="stockContador" style="font-size:11px;color:var(--muted);"></div>
+    </div>
     <div style="display:grid;grid-template-columns:2fr 120px 1fr 130px 130px 130px;gap:8px;padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--border);">
       <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;">Producto</span>
       <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;">Código</span>
