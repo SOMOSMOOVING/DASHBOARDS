@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Ventas · Mooving</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F2F0EA;
+      --surface: #FFFFFF;
+      --border: rgba(0,0,0,0.08);
+      --text: #1A1917;
+      --muted: #6B6A66;
+      --hint: #A09F9B;
+      --accent: #1B3A6B;
+      --accent2: #2E86AB;
+      --green: #27500A;
+      --green-bg: #EAF3DE;
+      --amber: #633806;
+      --amber-bg: #FAEEDA;
+      --red: #791F1F;
+      --red-bg: #FCEBEB;
+      --sidebar-w: 220px;
+      --font: 'Sora', sans-serif;
+    }
+
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-w); min-height: 100vh; background: var(--accent);
+      display: flex; flex-direction: column; position: fixed; top: 0; left: 0; z-index: 100;
+    }
+    .sidebar-brand { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .brand-row { display: flex; align-items: center; gap: 10px; }
+    .brand-icon { width: 34px; height: 34px; background: #2E86AB; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600; color: white; }
+    .brand-name { font-size: 15px; font-weight: 500; color: white; }
+    .brand-sub { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 0.5px; text-transform: uppercase; }
+    .sidebar-nav { padding: 20px 12px; flex: 1; }
+    .nav-label { font-size: 9px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 0 8px; margin: 16px 0 6px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; font-size: 13px; color: rgba(255,255,255,0.6); cursor: pointer; transition: all 0.15s; text-decoration: none; margin-bottom: 2px; }
+    .nav-item:hover { background: rgba(255,255,255,0.08); color: white; }
+    .nav-item.active { background: rgba(255,255,255,0.15); color: white; font-weight: 500; }
+    .sidebar-footer { padding: 16px 12px; border-top: 1px solid rgba(255,255,255,0.1); }
+    .user-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; }
+    .user-avatar { width: 30px; height: 30px; border-radius: 50%; background: #2E86AB; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: white; }
+    .user-name { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.85); }
+    .user-role { font-size: 10px; color: rgba(255,255,255,0.4); }
+
+    /* Main */
+    .main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+    .topbar-title { font-size: 16px; font-weight: 500; }
+    .topbar-sub { font-size: 12px; color: var(--muted); }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; display: inline-block; margin-right: 4px; }
+    .status-dot.live { background: #4CAF50; box-shadow: 0 0 0 2px #e8f5e9; animation: pulse 2s infinite; }
+    .status-dot.error { background: #f44336; }
+    @keyframes pulse { 0%,100%{box-shadow:0 0 0 2px #e8f5e9} 50%{box-shadow:0 0 0 4px #c8e6c9} }
+
+    .status-badge { font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 20px; background: #F2F0EA; color: var(--muted); display: flex; align-items: center; }
+
+    select.ctrl { font-family: var(--font); font-size: 12px; font-weight: 500; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; outline: none; }
+    select.ctrl:focus { border-color: var(--accent2); }
+
+    .btn-refresh { font-family: var(--font); font-size: 12px; font-weight: 500; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; transition: all 0.15s; }
+    .btn-refresh:hover { background: var(--accent); color: white; border-color: var(--accent); }
+    .btn-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Content */
+    .content { padding: 24px 28px 40px; }
+
+    /* Loading overlay */
+    .loading-overlay {
+      position: fixed; top: 0; left: var(--sidebar-w); right: 0; bottom: 0;
+      background: rgba(242,240,234,0.85); display: flex; flex-direction: column;
+      align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(4px);
+    }
+    .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 13px; color: var(--muted); }
+
+    /* Error banner */
+    .error-banner { background: var(--red-bg); border: 1px solid rgba(121,31,31,0.15); border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; display: none; }
+    .error-banner.show { display: flex; align-items: flex-start; gap: 10px; }
+    .error-banner-text { font-size: 13px; color: var(--red); }
+    .error-banner-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    /* KPIs */
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; animation: fadeUp 0.4s ease both; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .kpi-label { font-size: 10px; font-weight: 600; color: var(--muted); letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 8px; }
+    .kpi-value { font-size: 22px; font-weight: 500; line-height: 1; margin-bottom: 6px; }
+    .kpi-delta { font-size: 11px; }
+    .kpi-delta.up { color: var(--green); }
+    .kpi-delta.down { color: var(--red); }
+    .kpi-delta.neutral { color: var(--muted); }
+    .kpi-skeleton { height: 72px; background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 12px; }
+    @keyframes shimmer { 0%{background-position:200%} 100%{background-position:-200%} }
+
+    /* Filters */
+    .filter-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filter-btn { font-family: var(--font); font-size: 12px; font-weight: 500; padding: 7px 16px; border-radius: 20px; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--muted); transition: all 0.15s; }
+    .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .filter-btn:hover:not(.active) { background: #EDECEA; color: var(--text); }
+
+    /* Cards */
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; }
+    .card-full { grid-column: span 2; }
+    .card-title { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+    .card-sub { font-size: 11px; color: var(--muted); margin-bottom: 16px; }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+    .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+    /* Ranking */
+    .ranking-list { display: flex; flex-direction: column; gap: 8px; }
+    .rank-row { display: flex; align-items: center; gap: 10px; }
+    .rank-num { font-size: 11px; font-weight: 500; color: var(--hint); min-width: 16px; text-align: right; }
+    .rank-bar-wrap { flex: 1; height: 28px; background: #F4F3EF; border-radius: 5px; overflow: hidden; }
+    .rank-bar { height: 100%; border-radius: 5px; display: flex; align-items: center; padding: 0 10px; transition: width 0.6s ease; }
+    .rank-name { font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rank-amt { font-size: 11px; font-weight: 500; min-width: 80px; text-align: right; color: var(--muted); }
+
+    /* Pagos */
+    .pagos-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .pago-card { background: #F8F7F3; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; transition: transform 0.15s; }
+    .pago-card:hover { transform: translateY(-2px); }
+    .pago-name { font-size: 12px; font-weight: 500; margin-bottom: 10px; line-height: 1.3; }
+    .pago-stat { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
+    .pago-stat span:first-child { color: var(--muted); }
+    .pago-stat span:last-child { font-weight: 500; }
+    .pill { font-size: 10px; font-weight: 500; padding: 3px 9px; border-radius: 20px; display: inline-block; margin-top: 8px; }
+    .pill-green { background: var(--green-bg); color: var(--green); }
+    .pill-amber { background: var(--amber-bg); color: var(--amber); }
+    .pill-red   { background: var(--red-bg);   color: var(--red); }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .kpis { grid-template-columns: repeat(2,1fr); }
+      .charts-row { grid-template-columns: 1fr; }
+      .card-full { grid-column: span 1; }
+      .pagos-grid { grid-template-columns: repeat(2,1fr); }
+      .loading-overlay { left: 0; }
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #D3D1C7; border-radius: 3px; }
+  
+    /* ── LOGIN ── */
+    #loginOverlay {
+      position: fixed; inset: 0; background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+    }
+    #loginOverlay.hidden { display: none; }
+    .login-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 40px 36px; width: 340px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+    .login-logo {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 28px;
+    }
+    .login-logo .brand-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: var(--accent); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 16px;
+    }
+    .login-logo .brand-name { font-size: 18px; font-weight: 600; color: var(--text); }
+    .login-box h2 { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 20px; }
+    .login-field { margin-bottom: 14px; }
+    .login-field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .login-field input {
+      width: 100%; padding: 9px 12px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-size: 13px; font-family: inherit;
+      outline: none; transition: border-color 0.2s;
+    }
+    .login-field input:focus { border-color: var(--accent); }
+    .login-btn {
+      width: 100%; padding: 10px; margin-top: 8px;
+      background: var(--accent); color: white; border: none;
+      border-radius: 8px; font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: opacity 0.2s;
+    }
+    .login-btn:hover { opacity: 0.88; }
+    .login-error {
+      font-size: 12px; color: #e05252; margin-top: 10px;
+      text-align: center; display: none;
+    }
+
+  </style>
+</head>
+<body>
+
+<!-- Login Overlay -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="brand-icon">M</div>
+      <div class="brand-name">Mooving</div>
+    </div>
+    <h2>Ingresá tus credenciales</h2>
+    <div class="login-field">
+      <label>Usuario</label>
+      <input type="text" id="loginUser" placeholder="usuario" autocomplete="username" />
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <button class="login-btn" onclick="doLogin()">Ingresar</button>
+    <div class="login-error" id="loginError">Usuario o contraseña incorrectos</div>
+  </div>
+</div>
+
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-row">
+      <div class="brand-icon">M</div>
+      <div>
+        <div class="brand-name">Mooving</div>
+        <div class="brand-sub">Finnegans · BI</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Principal</div>
+    <a class="nav-item active" href="#" onclick="navegarA('dashboard');return false;" id="nav-dashboard">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" href="#" onclick="navegarA('facturas');return false;" id="nav-facturas">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 16 16"><rect x="1" y="2" width="14" height="12" rx="2"/><line x1="4" y1="6" x2="12" y2="6"/><line x1="4" y1="9" x2="9" y2="9"/></svg>
+      Facturas
+    </a>
+    <a class="nav-item" href="#" onclick="navegarA('clientes');return false;" id="nav-clientes">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 16 16"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-3 2.7-5 6-5s6 2 6 5"/></svg>
+      Clientes
+    </a>
+    <div class="nav-label">Finanzas</div>
+    <a class="nav-item" href="#">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2"/><line x1="1" y1="7" x2="15" y2="7"/></svg>
+      Cobranzas
+    </a>
+    <div class="nav-label">Operaciones</div>
+    <a class="nav-item" href="#">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="2" y1="6" x2="14" y2="6"/></svg>
+      Pedidos
+    </a>
+    <a class="nav-item" href="#">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 16 16"><path d="M3 3h10l1 9H2L3 3z"/><circle cx="6" cy="14" r="1"/><circle cx="10" cy="14" r="1"/></svg>
+      Stock
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="user-avatar">MV</div>
+      <div>
+        <div class="user-name">Mooving S.R.L.</div>
+        <div class="user-role">Finnegans GO</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Conectando con Finnegans...</div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">Dashboard de ventas</div>
+      <div class="topbar-sub" id="lastUpdate">Cargando datos...</div>
+    </div>
+    <div class="topbar-right">
+      <span class="status-badge" id="statusBadge"><span class="status-dot" id="statusDot"></span><span id="statusText">Conectando</span></span>
+      <select class="ctrl" id="yearSel" onchange="loadData()">
+        <option value="2026">2026</option>
+        <option value="2025">2025</option>
+        <option value="2024">2024</option>
+      </select>
+      <button class="btn-refresh" id="btnRefresh" onclick="loadData(true)" title="Forzar actualización desde Finnegans">↻ Actualizar</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="error-banner" id="errorBanner">
+      <span style="font-size:18px;">⚠️</span>
+      <div>
+        <div class="error-banner-text" id="errorText">No se pudo conectar con Finnegans.</div>
+        <div class="error-banner-sub" id="errorSub">Verificá las credenciales o intentá de nuevo.</div>
+      </div>
+    </div>
+
+    <!-- PÁGINA DASHBOARD -->
+    <div id="page-dashboard">
+
+    <div class="kpis" id="kpis">
+      <div class="kpi-skeleton"></div>
+      <div class="kpi-skeleton"></div>
+      <div class="kpi-skeleton"></div>
+      <div class="kpi-skeleton"></div>
+    </div>
+
+    <div class="filter-row" id="filters"></div>
+
+    <div class="charts-row">
+      <div class="card card-full">
+        <div class="card-title">Ventas mensuales</div>
+        <div class="card-sub" id="chartVentasSub">Facturación total por mes</div>
+        <div class="legend" id="legend-ventas"></div>
+        <div style="position:relative;width:100%;height:240px;">
+          <canvas id="chartVentas"></canvas>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- Detalle mensual por cliente -->
+    <div class="card" style="margin-top:0;" id="detalle-mensual-section">
+      <div class="card-title">Detalle mensual por cliente</div>
+      <div class="card-sub">Seleccioná un mes para ver qué clientes compraron y por cuánto</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;" id="mesesBtns"></div>
+      <div id="detalleMensualTabla" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 120px 80px;gap:8px;padding:8px 12px;background:var(--bg);border-radius:8px;margin-bottom:6px;">
+          <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;">Cliente</span>
+          <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;text-align:right;">Monto</span>
+          <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;text-align:right;">Facturas</span>
+        </div>
+        <div id="detalleMensualRows" style="max-height:400px;overflow-y:auto;"></div>
+        <div id="detalleMensualTotal" style="display:grid;grid-template-columns:1fr 120px 80px;gap:8px;padding:10px 12px;border-top:1px solid var(--border);margin-top:4px;"></div>
+      </div>
+      <div id="detalleMensualEmpty" style="text-align:center;padding:32px;color:var(--muted);font-size:13px;">Seleccioná un mes para ver el detalle</div>
+    </div>
+
+    </div><!-- fin page-dashboard -->
+
+    <!-- PÁGINA CLIENTES -->
+    <div id="page-clientes" style="display:none;">
+
+
+    <div class="charts-row">
+      <div class="card">
+        <div class="card-title">Top 10 clientes</div>
+        <div class="card-sub">Facturación acumulada año seleccionado</div>
+        <div id="rankingList" class="ranking-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Participación por cliente</div>
+        <div class="card-sub">Distribución en ventas totales</div>
+        <div class="legend" id="legend-pie"></div>
+        <div style="position:relative;width:100%;height:280px;">
+          <canvas id="chartPie"></canvas>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- NUEVA SECCIÓN: Detalle por cliente -->
+    <div class="card" id="detalle-section" style="margin-top:0;">
+      <div class="card-title">Detalle de productos por cliente</div>
+      <div class="card-sub">Búsqueda por cliente · productos facturados en el año</div>
+      <div style="position:relative;margin-bottom:16px;">
+        <input type="text" id="clienteSearch" placeholder="Buscar cliente..." oninput="filtrarClientes()" autocomplete="off"
+          style="width:100%;font-family:var(--font);font-size:14px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);outline:none;"
+          onfocus="this.style.borderColor='var(--accent2)'" onblur="this.style.borderColor='var(--border)'">
+        <div id="clienteDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-height:240px;overflow-y:auto;z-index:100;margin-top:4px;"></div>
+      </div>
+      <div id="detalleClienteNombre" style="font-size:13px;font-weight:500;color:var(--accent);margin-bottom:12px;display:none;"></div>
+      <div id="tortaFamilias" style="display:none;margin-bottom:24px;">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px;">Composición por categoría</div>
+        <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+          <canvas id="tortaCanvas" width="200" height="200" style="flex-shrink:0;"></canvas>
+          <div id="tortaLeyenda" style="flex:1;min-width:200px;"></div>
+        </div>
+      </div>
+      <div id="detalleTabla" style="display:none;">
+        <div style="display:grid;grid-template-columns:140px 1fr 100px 130px;gap:8px;padding:8px 12px;background:var(--bg);border-radius:8px;margin-bottom:6px;">
+          <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;">Categoría</span>
+          <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;">Producto</span>
+          <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;text-align:right;">Cantidad</span>
+          <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;text-align:right;">Monto</span>
+        </div>
+        <div id="detalleRows" style="max-height:400px;overflow-y:auto;"></div>
+        <div id="detalleTotales" style="display:grid;grid-template-columns:140px 1fr 100px 130px;gap:8px;padding:10px 12px;border-top:1px solid var(--border);margin-top:8px;"></div>
+      </div>
+      <div id="detalleEmpty" style="text-align:center;padding:32px;color:var(--muted);font-size:13px;">Buscá un cliente para ver su detalle de productos</div>
+    </div>
+
+    </div><!-- fin page-clientes -->
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- PÁGINA FACTURAS                            -->
+    <!-- ══════════════════════════════════════════ -->
+    <div id="page-facturas" style="display:none;">
+      <div style="padding:24px 28px;">
+
+        <!-- KPIs -->
+        <div id="facturasKpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;"></div>
+
+        <!-- Filtros -->
+        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="flex:2;min-width:200px;">
+            <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:6px;">Proveedor</label>
+            <input type="text" id="facturaProveedorSearch" placeholder="Buscar proveedor..." oninput="filtrarFacturas()"
+              style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--card);color:var(--text);box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:6px;">Desde</label>
+            <input type="date" id="facturaDesde" value="2026-01-01" oninput="filtrarFacturas()"
+              style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--card);color:var(--text);">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:6px;">Hasta</label>
+            <input type="date" id="facturaHasta" oninput="filtrarFacturas()"
+              style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--card);color:var(--text);">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:6px;">Estado</label>
+            <select id="facturaEstado" onchange="filtrarFacturas()"
+              style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--card);color:var(--text);">
+              <option value="">Todos</option>
+              <option value="Pagada">Pagadas</option>
+              <option value="Parcial">Parciales</option>
+              <option value="Pendiente">Pendientes</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Tabla -->
+        <div style="background:var(--card);border-radius:12px;border:1px solid var(--border);overflow:hidden;">
+          <div style="display:grid;grid-template-columns:1fr 140px 110px 110px 110px 90px 110px;gap:8px;padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--border);">
+            <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;">Proveedor</span>
+            <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;">Comprobante</span>
+            <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;">Fecha</span>
+            <span style="font-size:10px;font-weight:600;color:var(--muted);text-align:right;letter-spacing:0.6px;">Total</span>
+            <span style="font-size:10px;font-weight:600;color:var(--muted);text-align:right;letter-spacing:0.6px;">Pendiente</span>
+            <span style="font-size:10px;font-weight:600;color:var(--muted);text-align:center;letter-spacing:0.6px;">Estado</span>
+            <span style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:0.6px;">Acción</span>
+          </div>
+          <div id="facturasRows" style="max-height:60vh;overflow-y:auto;"></div>
+          <div id="facturasEmpty" style="padding:40px;text-align:center;color:var(--muted);font-size:13px;display:none;">No hay facturas para los filtros seleccionados</div>
+        </div>
+
+        <div id="facturasContador" style="margin-top:10px;font-size:12px;color:var(--muted);text-align:right;"></div>
+      </div>
+    </div><!-- fin page-facturas -->
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// CONFIGURACIÓN — editá solo esta sección
+// ══════════════════════════════════════════
+const CONFIG = {
+  clientId:     'f8e5f6b2160bbca3f5394b8c94358020',
+  clientSecret: '2cf024f90d3cc04c8736a12aff982bdd',
+  baseUrl:      'https://api.finneg.com/api',
+  reporte:      'ANAFACTURACION'
+};
+
+// ══════════════════════════════════════════
+// ESTADO
+// ══════════════════════════════════════════
+let token = null;
+let rawData = [];
+let chartVentas = null;
+let chartPie = null;
+let activeFilter = 'todos';
+let ventasMesCache = Array(12).fill(0);
+
+const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const COLORS = ['#1B3A6B','#2E86AB','#378ADD','#185FA5','#0C447C','#4A9EC5','#63B3D4','#1B3A6B','#185FA5','#888780'];
+
+// ══════════════════════════════════════════
+// UTILIDADES
+// ══════════════════════════════════════════
+function fmt(n) {
+  if (n >= 1000000) return '$' + (Math.round(n / 100000) / 10).toLocaleString('es-AR') + 'M';
+  if (n >= 1000)    return '$' + Math.round(n / 1000).toLocaleString('es-AR') + 'K';
+  return '$' + Math.round(n).toLocaleString('es-AR');
+}
+
+function getYear() { return document.getElementById('yearSel').value; }
+
+function setStatus(state, text) {
+  const dot  = document.getElementById('statusDot');
+  const span = document.getElementById('statusText');
+  dot.className  = 'status-dot' + (state === 'live' ? ' live' : state === 'error' ? ' error' : '');
+  span.textContent = text;
+}
+
+function showError(msg, sub = '') {
+  const b = document.getElementById('errorBanner');
+  document.getElementById('errorText').textContent = msg;
+  document.getElementById('errorSub').textContent  = sub;
+  b.classList.add('show');
+}
+
+function hideError() { document.getElementById('errorBanner').classList.remove('show'); }
+
+function setLoading(on, text = 'Cargando datos...') {
+  document.getElementById('loadingOverlay').style.display = on ? 'flex' : 'none';
+  document.getElementById('loadingText').textContent = text;
+  document.getElementById('btnRefresh').disabled = on;
+}
+
+// ══════════════════════════════════════════
+// AUTENTICACIÓN
+// ══════════════════════════════════════════
+async function getToken() {
+  const url = `${CONFIG.baseUrl}/oauth/token?grant_type=client_credentials&client_id=${CONFIG.clientId}&client_secret=${CONFIG.clientSecret}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Error de autenticación (' + res.status + ')');
+  const text = await res.text();
+  return text.replace(/"/g, '').trim();
+}
+
+// ══════════════════════════════════════════
+// FETCH DATOS
+// ══════════════════════════════════════════
+async function fetchReporte(token, fechaDesde, fechaHasta) {
+  const params = new URLSearchParams({
+    ACCESS_TOKEN: token,
+    PARAMWEBREPORT_FechaDesde: fechaDesde,
+    PARAMWEBREPORT_FechaHasta: fechaHasta
+  });
+  const url = `${CONFIG.baseUrl}/reports/${CONFIG.reporte}?${params}`;
+  console.log('Consultando:', url);
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Error al obtener reporte (${res.status}) ${body.substring(0, 200)}`);
+  }
+  return await res.json();
+}
+
+// ══════════════════════════════════════════
+// PROCESAR DATOS
+// ══════════════════════════════════════════
+function procesarDatos(data, year) {
+  // Ventas por mes
+  const ventasMes = Array(12).fill(0);
+
+  // Ventas por cliente
+  const porCliente = {};
+
+  // Días de pago por cliente (si el reporte los trae)
+  const diasPago = {};
+
+  data.forEach(row => {
+    // Ajustá estos nombres de campo según lo que devuelva tu reporte real
+    const fecha    = row['ANO-MES'] || row.FECHA || row.FechaComprobante || '';
+    // Los importes ya vienen con signo correcto: negativos en NC, positivos en facturas
+    const importe  = parseFloat(row.IMPORTEMONPRINCIPAL || row.GRAVADO || row.PRECIO || 0);
+    const cliente  = row.CLIENTE || row.NOMBRECUENTA || row.RazonSocial || 'Sin nombre';
+    const diasCobro= parseFloat(row.DiasHastaCobro || row.DiasPago || 0);
+
+    // ANO-MES viene como "2025-03" — extraemos el mes directo
+    let mes = -1;
+    if (fecha && fecha.includes('-')) {
+      const partes = fecha.split('-');
+      if (partes.length >= 2) mes = parseInt(partes[1]) - 1; // 0-indexed
+    } else {
+      mes = new Date(fecha).getMonth();
+    }
+
+    if (!isNaN(mes) && mes >= 0 && importe !== 0) {
+      ventasMes[mes] += importe;
+
+      if (!porCliente[cliente]) porCliente[cliente] = { total: 0, facturas: 0, diasTotal: 0 };
+      porCliente[cliente].total    += importe;
+      porCliente[cliente].facturas += 1;
+      if (diasCobro > 0) porCliente[cliente].diasTotal += diasCobro;
+    }
+  });
+
+  // Top 10 clientes
+  const top10 = Object.entries(porCliente)
+    .map(([nombre, v]) => ({ nombre, total: v.total, facturas: v.facturas, diasProm: v.facturas > 0 ? Math.round(v.diasTotal / v.facturas) : 0 }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10);
+
+  // Top 6 mejores pagadores (con datos de cobro)
+  const pagadores = top10
+    .filter(c => c.diasProm > 0)
+    .sort((a, b) => a.diasProm - b.diasProm)
+    .slice(0, 6)
+    .map(c => ({
+      ...c,
+      estado: c.diasProm <= 20 ? 'green' : c.diasProm <= 35 ? 'amber' : 'red',
+      enTermino: Math.max(60, Math.round(100 - c.diasProm * 0.8))
+    }));
+
+  return { ventasMes, top10, pagadores };
+}
+
+// ══════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════
+function renderKPIs(ventasMes, top10) {
+  const total = ventasMes.reduce((a, b) => a + b, 0);
+  const mesesConDatos = ventasMes.filter(v => v > 0).length || 1;
+  const promMes = total / mesesConDatos;
+  const topC = top10[0] || { nombre: '-', total: 0 };
+  const mejorMes = MESES[ventasMes.indexOf(Math.max(...ventasMes))];
+
+  const kpis = [
+    { label: 'Facturación total', value: fmt(total), delta: 'año ' + getYear(), cls: 'neutral' },
+    { label: 'Promedio mensual', value: fmt(promMes), delta: 'por mes', cls: 'neutral' },
+    { label: 'Top cliente', value: topC.nombre.split(' ').slice(0, 2).join(' '), delta: fmt(topC.total), cls: 'neutral' },
+    { label: 'Mejor mes', value: mejorMes, delta: fmt(Math.max(...ventasMes)), cls: 'up' },
+  ];
+
+  document.getElementById('kpis').innerHTML = kpis.map((k, i) => `
+    <div class="kpi" style="animation-delay:${i * 0.05}s">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-delta ${k.cls}">${k.delta}</div>
+    </div>
+  `).join('');
+}
+
+function renderFilters() {
+  const btns = [['todos','Todos los meses'],['s1','1er semestre'],['s2','2do semestre']];
+  document.getElementById('filters').innerHTML = btns.map(([v, l]) =>
+    `<button class="filter-btn ${activeFilter === v ? 'active' : ''}" onclick="setFilter('${v}')">${l}</button>`
+  ).join('');
+}
+
+function setFilter(f) { activeFilter = f; renderFilters(); renderChartVentas({ ventasMes: ventasMesCache }); }
+
+function getFiltered(ventas) {
+  if (activeFilter === 's1') return ventas.map((v, i) => i < 6 ? v : 0);
+  if (activeFilter === 's2') return ventas.map((v, i) => i >= 6 ? v : 0);
+  return ventas;
+}
+
+function procesarFromRaw() {
+  return procesarDatos(rawData, getYear());
+}
+
+function renderChartVentas(processed) {
+  const filtered = getFiltered(processed.ventasMes);
+  document.getElementById('legend-ventas').innerHTML = `
+    <span class="legend-item"><span class="legend-dot" style="background:#1B3A6B;"></span>${getYear()}</span>
+  `;
+  document.getElementById('chartVentasSub').textContent = `Facturación total por mes · ${getYear()}`;
+
+  const cfg = {
+    type: 'bar',
+    data: {
+      labels: MESES,
+      datasets: [{ label: getYear(), data: filtered, backgroundColor: '#1B3A6B', borderRadius: 5, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + fmt(c.raw) } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11, family: 'Sora' }, color: '#6B6A66', maxRotation: 0 } },
+        y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 11, family: 'Sora' }, color: '#6B6A66', callback: v => fmt(v) } }
+      }
+    }
+  };
+
+  if (chartVentas) { chartVentas.data.datasets[0].data = filtered; chartVentas.update(); }
+  else             { chartVentas = new Chart(document.getElementById('chartVentas'), cfg); }
+}
+
+function renderRanking(top10) {
+  if (!top10.length) { document.getElementById('rankingList').innerHTML = '<div class="empty">Sin datos para mostrar</div>'; return; }
+  const max = top10[0].total;
+  document.getElementById('rankingList').innerHTML = top10.map((c, i) => {
+    const pct = Math.round(c.total / max * 100);
+    return `
+      <div class="rank-row">
+        <span class="rank-num">${i + 1}</span>
+        <div class="rank-bar-wrap">
+          <div class="rank-bar" style="width:${pct}%;background:${COLORS[i]}22;">
+            <span class="rank-name" style="color:${COLORS[i]};">${c.nombre}</span>
+          </div>
+        </div>
+        <span class="rank-amt">${fmt(c.total)}</span>
+      </div>`;
+  }).join('');
+}
+
+function renderPie(top10) {
+  if (!top10.length) return;
+  const top5   = top10.slice(0, 5);
+  const otros  = top10.slice(5).reduce((a, b) => a + b.total, 0);
+  const labels = [...top5.map(c => c.nombre.split(' ').slice(0, 2).join(' ')), 'Otros'];
+  const values = [...top5.map(c => c.total), otros];
+  const colors = ['#1B3A6B','#2E86AB','#378ADD','#639922','#1D9E75','#888780'];
+  const total  = values.reduce((a, b) => a + b, 0);
+
+  document.getElementById('legend-pie').innerHTML = labels.map((l, i) =>
+    `<span class="legend-item"><span class="legend-dot" style="background:${colors[i]};"></span>${l} ${Math.round(values[i]/total*100)}%</span>`
+  ).join('');
+
+  const cfg = {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 3, borderColor: '#fff' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + fmt(c.raw) + ' (' + Math.round(c.raw/total*100) + '%)' } } }
+    }
+  };
+
+  if (chartPie) { chartPie.data.datasets[0].data = values; chartPie.data.labels = labels; chartPie.update(); }
+  else          { chartPie = new Chart(document.getElementById('chartPie'), cfg); }
+}
+
+function renderPagos(pagadores) {
+  const grid = document.getElementById('pagosGrid');
+  if (!grid) return; // sección removida
+  if (!pagadores.length) {
+    grid.innerHTML = '<div class="empty" style="grid-column:span 3">No hay datos de cobro disponibles en este reporte</div>';
+    return;
+  }
+  grid.innerHTML = pagadores.map(p => {
+    const pill  = p.estado === 'green' ? 'pill-green' : p.estado === 'amber' ? 'pill-amber' : 'pill-red';
+    const label = p.estado === 'green' ? 'Excelente' : p.estado === 'amber' ? 'Regular' : 'Demorado';
+    return `
+      <div class="pago-card">
+        <div class="pago-name">${p.nombre}</div>
+        <div class="pago-stat"><span>Días promedio</span><span>${p.diasProm > 0 ? p.diasProm + ' días' : 'N/D'}</span></div>
+        <div class="pago-stat"><span>En término</span><span>${p.enTermino}%</span></div>
+        <div class="pago-stat"><span>Facturas</span><span>${p.facturas}</span></div>
+        <span class="pill ${pill}">${label}</span>
+      </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// CARGA PRINCIPAL
+// ══════════════════════════════════════════
+// GOOGLE SHEETS — fuente de datos rápida
+// ══════════════════════════════════════════
+const SHEETS_API = 'https://script.google.com/macros/s/AKfycbzJ2mZC6NaoRDF6X2Nl-nED5hPkHVxS3PKwoRmH6G-Azt4eMfBoKYVWW8kT1pRUdPDK/exec';
+
+async function fetchDeSheets(tipo) {
+  const res = await fetch(`${SHEETS_API}?tipo=${tipo}`);
+  if (!res.ok) throw new Error('Error Sheets (' + res.status + ')');
+  const json = await res.json();
+  return json.data || [];
+}
+
+async function loadData(forceRefresh = false) {
+  hideError();
+  setLoading(true, 'Cargando datos...');
+  setStatus('', 'Conectando');
+
+  try {
+    const year = getYear();
+    setLoading(true, 'Leyendo Google Sheets...');
+
+    const [datosMeses, datosClientes, metadata] = await Promise.all([
+      fetchDeSheets('meses'),
+      fetchDeSheets('clientes'),
+      fetchDeSheets('metadata')
+    ]);
+
+    // Ventas por mes
+    const ventasMes = Array(12).fill(0);
+    datosMeses.forEach(row => {
+      let anoMes = row.ANO_MES;
+      // El doGet ya reformatea Date a 'YYYY-MM', pero por las dudas defendemos ambos casos
+      if (anoMes instanceof Date || (typeof anoMes === 'object' && anoMes !== null)) {
+        const d = new Date(anoMes);
+        anoMes = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      } else {
+        anoMes = (anoMes || '').toString().trim();
+      }
+      if (!anoMes.startsWith(year)) return;
+      const mes = parseInt(anoMes.split('-')[1]) - 1;
+      if (mes >= 0 && mes < 12) ventasMes[mes] += parseFloat(row.IMPORTE || 0);
+    });
+
+    // Top 10 clientes — filtrar por año y agrupar (puede haber filas duplicadas por diciembre)
+    const clienteMap = {};
+    datosClientes
+      .filter(r => String(r.ANO || r['AÑO'] || '') === String(year))
+      .forEach(r => {
+        const nombre = r.CLIENTE;
+        if (!clienteMap[nombre]) clienteMap[nombre] = { nombre, total: 0, facturas: 0 };
+        clienteMap[nombre].total    += parseFloat(r.TOTAL || 0);
+        clienteMap[nombre].facturas += parseInt(r.FACTURAS || 0);
+      });
+    const top10 = Object.values(clienteMap)
+      .filter(r => r.total > 0)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10)
+      .map(r => ({ ...r, diasProm: 0 }));
+
+    if (!top10.length) {
+      showError('No hay datos para el año seleccionado.', 'Ejecutá sincronizarDatos en Apps Script primero.');
+      setStatus('error', 'Sin datos');
+      setLoading(false);
+      return;
+    }
+
+    const pagadores = top10.slice(0, 6).map(c => ({ ...c, estado: 'green', enTermino: 95 }));
+
+    ventasMesCache = ventasMes;
+    renderKPIs(ventasMes, top10);
+    renderFilters();
+    renderChartVentas({ ventasMes });
+    renderRanking(top10);
+    renderPie(top10);
+    renderPagos(pagadores);
+
+    // Metadata: la hoja tiene filas [nombre_campo, valor] sin header.
+    // El doGet toma row[0] como headers, así que devuelve objetos raros.
+    // Lo más robusto es leer el array y buscar por contenido.
+    const metaObj = {};
+    metadata.forEach(m => {
+      // Cada objeto puede tener la clave como nombre de campo
+      // Estructura real: [{ ultima_sync: 'valor_sync', total_registros: 'valor_total', año: 'valor_año' }]
+      // porque el doGet usa la primera fila ['ultima_sync', 'valor'] como headers → headers[0]='ultima_sync', headers[1]=valor_real
+      // Simplemente aplanamos todo
+      Object.entries(m).forEach(([k, v]) => { if (k && k !== '') metaObj[k] = v; });
+    });
+    // Buscar ultima_sync — puede estar como clave directa o como valor si el doGet lo leyó al revés
+    let syncRaw = metaObj['ultima_sync'] || '';
+    // Si syncRaw no parece una fecha, puede que la estructura esté invertida (clave = 'ultima_sync' pero valor = otra cosa)
+    // En ese caso buscar entre los valores del objeto
+    if (!syncRaw || syncRaw === 'ultima_sync') {
+      const vals = Object.values(metaObj);
+      syncRaw = vals.find(v => typeof v === 'string' && v.includes('T') && v.includes('-')) || '';
+    }
+    const syncDate = syncRaw ? new Date(syncRaw).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+    let totalReg = metaObj['total_registros'] || '';
+    if (!totalReg || isNaN(Number(totalReg))) {
+      totalReg = Object.values(metaObj).find(v => !isNaN(Number(v)) && Number(v) > 100) || '';
+    }
+    document.getElementById('lastUpdate').textContent = `Última sync: ${syncDate} · ${totalReg ? totalReg + ' registros' : ''}`;
+    setStatus('live', 'Google Sheets · Finnegans');
+
+  } catch (err) {
+    console.error('Sheets falló:', err.message);
+    showError('No se pudo cargar desde Google Sheets.', err.message);
+    setStatus('error', 'Error de conexión');
+    document.getElementById('lastUpdate').textContent = 'Error al cargar datos';
+  } finally {
+    setLoading(false);
+  }
+}
+
+
+// ══════════════════════════════════════════
+// NAVEGACIÓN ENTRE PÁGINAS
+// ══════════════════════════════════════════
+function navegarA(pagina) {
+  // Ocultar todas las páginas
+  ['dashboard', 'clientes', 'facturas'].forEach(p => {
+    const el = document.getElementById('page-' + p);
+    if (el) el.style.display = 'none';
+    const nav = document.getElementById('nav-' + p);
+    if (nav) nav.classList.remove('active');
+  });
+
+  // Mostrar la página seleccionada
+  const page = document.getElementById('page-' + pagina);
+  if (page) page.style.display = 'block';
+  const navEl = document.getElementById('nav-' + pagina);
+  if (navEl) navEl.classList.add('active');
+
+  // Actualizar título del topbar
+  const titles = { dashboard: 'Dashboard de ventas', clientes: 'Clientes', facturas: 'Facturas de Compra' };
+  document.querySelector('.topbar-title').textContent = titles[pagina] || pagina;
+
+  // Re-renderizar gráfico si vuelve a dashboard (por resize)
+  if (pagina === 'dashboard' && chartVentas) chartVentas.resize();
+  if (pagina === 'clientes' && chartPie) setTimeout(() => chartPie.resize(), 50);
+  if (pagina === 'facturas') cargarFacturas();
+}
+
+
+// ══════════════════════════════════════════
+// DETALLE MENSUAL
+// ══════════════════════════════════════════
+let datosDetalleMensual = [];
+let mesSeleccionado = null;
+
+async function cargarDetalleMensual() {
+  try {
+    const res = await fetch(`${SHEETS_API}?tipo=detalleMensual`);
+    const json = await res.json();
+    datosDetalleMensual = json.data || [];
+    console.log('Detalle mensual cargado:', datosDetalleMensual.length, 'filas');
+    renderMesesBtns();
+  } catch(e) {
+    console.warn('No se pudo cargar detalle mensual:', e.message);
+  }
+}
+
+function renderMesesBtns() {
+  const year = getYear();
+  const mesesDisp = [...new Set(
+    datosDetalleMensual
+      .filter(r => (r.ANO_MES || '').startsWith(year))
+      .map(r => r.ANO_MES)
+  )].sort();
+
+  const MESES_LABEL = {
+    '01':'Ene','02':'Feb','03':'Mar','04':'Abr','05':'May','06':'Jun',
+    '07':'Jul','08':'Ago','09':'Sep','10':'Oct','11':'Nov','12':'Dic'
+  };
+
+  document.getElementById('mesesBtns').innerHTML = mesesDisp.map(m => {
+    const mes = m.split('-')[1];
+    return `<button class="filter-btn ${mesSeleccionado===m?'active':''}"
+      onclick="seleccionarMes('${m}')">${MESES_LABEL[mes] || m}</button>`;
+  }).join('');
+}
+
+function seleccionarMes(anoMes) {
+  mesSeleccionado = anoMes;
+  renderMesesBtns();
+
+  const filas = datosDetalleMensual
+    .filter(r => r.ANO_MES === anoMes)
+    .sort((a, b) => parseFloat(b.TOTAL||0) - parseFloat(a.TOTAL||0));
+
+  if (!filas.length) {
+    document.getElementById('detalleMensualTabla').style.display = 'none';
+    document.getElementById('detalleMensualEmpty').style.display = 'block';
+    document.getElementById('detalleMensualEmpty').textContent = 'No hay datos para este mes.';
+    return;
+  }
+
+  document.getElementById('detalleMensualEmpty').style.display = 'none';
+  document.getElementById('detalleMensualTabla').style.display = 'block';
+
+  let totalMonto = 0, totalFact = 0;
+
+  document.getElementById('detalleMensualRows').innerHTML = filas.map(r => {
+    const monto = parseFloat(r.TOTAL || 0);
+    const fact  = parseInt(r.FACTURAS || 0);
+    totalMonto += monto;
+    totalFact  += fact;
+    return `<div style="display:grid;grid-template-columns:1fr 120px 80px;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);">
+      <span style="font-size:12px;">${r.CLIENTE || '-'}</span>
+      <span style="font-size:12px;text-align:right;font-weight:500;">${fmt(monto)}</span>
+      <span style="font-size:12px;text-align:right;color:var(--muted);">${fact}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('detalleMensualTotal').innerHTML = `
+    <span style="font-size:12px;font-weight:600;">TOTAL</span>
+    <span style="font-size:12px;font-weight:600;text-align:right;color:var(--accent2);">${fmt(totalMonto)}</span>
+    <span style="font-size:12px;font-weight:600;text-align:right;">${totalFact}</span>
+  `;
+}
+
+// Arrancar solo si ya está logueado (no llamar loadData hasta login)
+// El login llama a loadData() al autenticarse correctamente
+
+// ══════════════════════════════════════════
+// DETALLE POR CLIENTE
+// ══════════════════════════════════════════
+let datosDetalle = [];
+
+async function cargarDetalle() {
+  try {
+    const res = await fetch(`${SHEETS_API}?tipo=detalle`);
+    const json = await res.json();
+    datosDetalle = json.data || [];
+    console.log('Detalle cargado:', datosDetalle.length, 'filas');
+  } catch(e) {
+    console.warn('No se pudo cargar detalle:', e.message);
+  }
+}
+
+function filtrarClientes() {
+  const q = document.getElementById('clienteSearch').value.trim().toLowerCase();
+  const dd = document.getElementById('clienteDropdown');
+  if (q.length < 2) { dd.style.display = 'none'; return; }
+
+  const year = getYear();
+  const clientes = [...new Set(
+    datosDetalle
+      .filter(r => String(r.ANO || '') === String(year) && (r.CLIENTE || '').toLowerCase().includes(q))
+      .map(r => r.CLIENTE)
+  )].slice(0, 20);
+
+  if (!clientes.length) { dd.style.display = 'none'; return; }
+
+  dd.innerHTML = clientes.map(c =>
+    `<div onclick="seleccionarCliente('${c.replace(/'/g,"\'")}')"
+      style="padding:10px 14px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border);"
+      onmouseover="this.style.background='#F4F3EF'" onmouseout="this.style.background='white'">${c}</div>`
+  ).join('');
+  dd.style.display = 'block';
+}
+
+function seleccionarCliente(nombre) {
+  document.getElementById('clienteSearch').value = nombre;
+  document.getElementById('clienteDropdown').style.display = 'none';
+
+  const year = getYear();
+  const filas = datosDetalle.filter(r => String(r.ANO || '') === String(year) && r.CLIENTE === nombre);
+
+  if (!filas.length) {
+    document.getElementById('detalleTabla').style.display = 'none';
+    document.getElementById('detalleEmpty').style.display = 'block';
+    document.getElementById('detalleEmpty').textContent = 'No hay detalle disponible para este cliente.';
+    return;
+  }
+
+  document.getElementById('detalleClienteNombre').textContent = nombre;
+  document.getElementById('detalleClienteNombre').style.display = 'block';
+  document.getElementById('detalleEmpty').style.display = 'none';
+  document.getElementById('detalleTabla').style.display = 'block';
+
+  // Separar productos normales de descuentos/NC
+  const productos = filas.filter(r => r.CODIGO !== '__DESC__' && r.CODIGO !== '__NC__' && r.CODIGO !== '__ND__');
+  const lineaDesc = filas.find(r => r.CODIGO === '__DESC__' || r.CODIGO === '__NC__' || r.CODIGO === '__ND__');
+
+  // Torta por familia
+  const porFamilia = {};
+  productos.forEach(r => {
+    const fam = (r.FAMILIA || r.DESCRIPCION || 'Sin categoría').trim() || 'Sin categoría';
+    if (!porFamilia[fam]) porFamilia[fam] = { monto: 0, cantidad: 0 };
+    porFamilia[fam].monto    += parseFloat(r.MONTO || 0);
+    porFamilia[fam].cantidad += parseFloat(r.CANTIDAD || 0);
+  });
+  const famEntries = Object.entries(porFamilia).sort((a,b) => b[1].monto - a[1].monto);
+  const totalFam = famEntries.reduce((s, e) => s + e[1].monto, 0);
+  const COLORS = ['#1B2F5B','#2E4A8E','#4A6FBF','#6B93D6','#8FBBE8','#B5D4F0','#D4E8F8','#3A7D6B','#5BAD95','#8ACFBB','#C4E8DE','#F4C542','#F4A142','#E07050'];
+  renderTortaFamilias(famEntries, totalFam, COLORS);
+
+  let totalCant = 0, subtotal = 0;
+
+  document.getElementById('detalleRows').innerHTML = productos
+    .sort((a, b) => parseFloat(b.MONTO || 0) - parseFloat(a.MONTO || 0))
+    .map(r => {
+      const cant  = parseFloat(r.CANTIDAD || 0);
+      const monto = parseFloat(r.MONTO || 0);
+      totalCant  += cant;
+      subtotal   += monto;
+      return `<div style="display:grid;grid-template-columns:140px 1fr 100px 130px;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);">
+        <span style="font-size:12px;font-family:var(--mono);color:var(--muted);">${r.FAMILIA || '-'}</span>
+        <span style="font-size:12px;">${r.CODIGO || '-'}</span>
+        <span style="font-size:12px;text-align:right;">${cant.toLocaleString('es-AR')}</span>
+        <span style="font-size:12px;text-align:right;font-weight:500;">${fmt(monto)}</span>
+      </div>`;
+    }).join('');
+
+  const montoDesc = lineaDesc ? parseFloat(lineaDesc.MONTO || 0) : 0;
+  const totalNeto = subtotal + montoDesc;
+
+  let resumenHTML = `
+    <span style="font-size:12px;font-weight:600;">Subtotal</span>
+    <span></span>
+    <span style="font-size:12px;font-weight:600;text-align:right;">${totalCant.toLocaleString('es-AR')}</span>
+    <span style="font-size:12px;font-weight:600;text-align:right;">${fmt(subtotal)}</span>
+  `;
+
+  if (montoDesc !== 0) resumenHTML += `
+    <span style="font-size:12px;color:#e05252;">NC y Descuentos</span>
+    <span></span>
+    <span></span>
+    <span style="font-size:12px;text-align:right;color:#e05252;">${fmt(montoDesc)}</span>
+  `;
+
+  resumenHTML += `
+    <span style="font-size:13px;font-weight:700;color:var(--text);border-top:1px solid var(--border);padding-top:8px;margin-top:4px;">TOTAL NETO</span>
+    <span style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;"></span>
+    <span style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;"></span>
+    <span style="font-size:13px;font-weight:700;text-align:right;color:var(--accent2);border-top:1px solid var(--border);padding-top:8px;margin-top:4px;">${fmt(totalNeto)}</span>
+  `;
+
+  document.getElementById('detalleTotales').innerHTML = resumenHTML;
+}
+
+// ══════════════════════════════════════════
+// TORTA POR FAMILIA
+// ══════════════════════════════════════════
+function renderTortaFamilias(entries, total, colors) {
+  const container = document.getElementById('tortaFamilias');
+  const canvas    = document.getElementById('tortaCanvas');
+  const leyenda   = document.getElementById('tortaLeyenda');
+  if (!entries.length) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+
+  // Mostrar todas las categorías sin agrupar
+  const data = entries;
+
+  // Calcular slices
+  const slices = [];
+  let startAngle = -Math.PI / 2;
+  data.forEach(function([fam, val], i) {
+    const slice = (val.monto / total) * 2 * Math.PI;
+    slices.push({ fam, val, color: colors[i % colors.length], start: startAngle, end: startAngle + slice });
+    startAngle += slice;
+  });
+
+  const cx = 100, cy = 100, r = 90, rInner = 52;
+  const ctx = canvas.getContext('2d');
+
+  function drawChart(highlightIdx) {
+    ctx.clearRect(0, 0, 200, 200);
+    slices.forEach(function(s, i) {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      const rOuter = highlightIdx === i ? r + 6 : r;
+      ctx.arc(cx, cy, rOuter, s.start, s.end);
+      ctx.closePath();
+      ctx.fillStyle = s.color;
+      ctx.fill();
+    });
+    // Hueco central
+    ctx.beginPath();
+    ctx.arc(cx, cy, rInner, 0, 2 * Math.PI);
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--card').trim() || '#fff';
+    ctx.fill();
+  }
+
+  drawChart(-1);
+
+  // Tooltip
+  let tooltip = document.getElementById('tortaTooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.id = 'tortaTooltip';
+    tooltip.style.cssText = 'position:fixed;background:#1B2F5B;color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;pointer-events:none;display:none;z-index:999;line-height:1.6;';
+    document.body.appendChild(tooltip);
+  }
+
+  canvas.onmousemove = function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left - cx;
+    const my = e.clientY - rect.top - cy;
+    const dist = Math.sqrt(mx*mx + my*my);
+    if (dist < rInner || dist > r + 8) {
+      tooltip.style.display = 'none';
+      drawChart(-1);
+      return;
+    }
+    let angle = Math.atan2(my, mx);
+    if (angle < -Math.PI/2) angle += 2*Math.PI;
+    const hit = slices.findIndex(s => angle >= s.start && angle < s.end);
+    if (hit >= 0) {
+      const s = slices[hit];
+      const pct = ((s.val.monto / total) * 100).toFixed(1);
+      tooltip.innerHTML = `<strong>${s.fam}</strong><br>${s.val.cantidad.toLocaleString('es-AR')} u. · ${pct}% · ${fmt(s.val.monto)}`;
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.clientX + 14) + 'px';
+      tooltip.style.top  = (e.clientY - 10) + 'px';
+      drawChart(hit);
+      // Highlight leyenda
+      leyenda.querySelectorAll('[data-idx]').forEach(el => {
+        el.style.opacity = String(parseInt(el.dataset.idx)) === String(hit) ? '1' : '0.4';
+      });
+    }
+  };
+
+  canvas.onmouseleave = function() {
+    tooltip.style.display = 'none';
+    drawChart(-1);
+    leyenda.querySelectorAll('[data-idx]').forEach(el => el.style.opacity = '1');
+  };
+
+  // Leyenda con cantidad
+  leyenda.innerHTML = data.map(function([fam, val], i) {
+    const pct = ((val.monto / total) * 100).toFixed(1);
+    return `<div data-idx="${i}" style="display:grid;grid-template-columns:10px 1fr auto auto auto;align-items:center;gap:8px;margin-bottom:6px;cursor:default;transition:opacity 0.15s;">
+      <div style="width:10px;height:10px;border-radius:2px;background:${colors[i % colors.length]};"></div>
+      <span style="font-size:11px;color:var(--text);">${fam}</span>
+      <span style="font-size:11px;color:var(--muted);text-align:right;">${val.cantidad.toLocaleString('es-AR')} u.</span>
+      <span style="font-size:11px;font-weight:600;color:var(--muted);text-align:right;">${pct}%</span>
+      <span style="font-size:11px;color:var(--muted);text-align:right;">${fmt(val.monto)}</span>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// FACTURAS DE COMPRA
+// ══════════════════════════════════════════
+const SHEETS_API_FACTURAS = 'https://script.google.com/macros/s/AKfycbzJ2mZC6NaoRDF6X2Nl-nED5hPkHVxS3PKwoRmH6G-Azt4eMfBoKYVWW8kT1pRUdPDK/exec';
+
+// facturasData: una fila por factura (agrupado por DOCNROINT)
+// pagadoPorFactura: { DOCNROINT → total importe aplicado desde OPs }
+let facturasData = [];
+let pagadoPorFactura = {};
+let estadosManuales = {}; // { DOCNROINT: "Pagada." }
+let facturasLoaded = false;
+
+async function cargarFacturas() {
+  if (facturasLoaded) { filtrarFacturas(); return; }
+
+  document.getElementById('facturasRows').innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-size:13px;">Cargando facturas...</div>';
+
+  try {
+    const [resFact, resOps, resEM] = await Promise.all([
+      fetch(SHEETS_API_FACTURAS + '?tipo=facturasCompra'),
+      fetch(SHEETS_API_FACTURAS + '?tipo=ordenPago'),
+      fetch(SHEETS_API_FACTURAS + '?tipo=estadosManual')
+    ]);
+    const jsonFact = await resFact.json();
+    const jsonOps  = await resOps.json();
+    const jsonEM   = await resEM.json();
+
+    // Cargar estados manuales
+    estadosManuales = {};
+    (jsonEM.data || []).forEach(m => {
+      if (m.DOCNROINT) estadosManuales[m.DOCNROINT] = m.ESTADO;
+    });
+
+    // Sheets ya trae una fila por factura (agrupado por DOCNROINT en el Apps Script)
+    facturasData = (jsonFact.data || []).map(row => ({
+      DOCNROINT:   String(row.DOCNROINT   || '').trim(),
+      COMPROBANTE: String(row.COMPROBANTE || '').trim(),
+      PROVEEDOR:   String(row.PROVEEDOR   || '').trim(),
+      FECHA:       String(row.FECHA       || '').trim(),
+      TOTAL:       parseFloat(row.TOTAL   || 0),
+      ANO:         String(row.ANO         || '').trim(),
+    })).filter(row => row.DOCNROINT);
+
+    // ── Cruce con OPs: sumar IMPORTEAPLICADO por DOCUMENTOAPLICADO ──
+    // Solo registros con TIPOOP=APL y TIPODOCUMENTOAPLICADO=Factura de Compra
+    pagadoPorFactura = {};
+    (jsonOps.data || []).forEach(op => {
+      if ((op.TIPOOP || '').trim() !== 'APL') return;
+      if ((op.TIPODOCUMENTOAPLICADO || '').trim() !== 'Factura de Compra') return;
+      const docAplicado = String(op.DOCUMENTOAPLICADO || '').trim();
+      if (!docAplicado) return;
+      const importe = parseFloat(op.IMPORTEAPLICADO || 0);
+      pagadoPorFactura[docAplicado] = (pagadoPorFactura[docAplicado] || 0) + importe;
+    });
+
+    facturasLoaded = true;
+    filtrarFacturas();
+  } catch(e) {
+    document.getElementById('facturasRows').innerHTML = '<div style="padding:40px;text-align:center;color:#e05252;font-size:13px;">Error al cargar facturas: ' + e.message + '</div>';
+  }
+}
+
+// Calcula el estado de una factura — el estado manual tiene prioridad
+function estadoFactura(f) {
+  if (estadosManuales[f.DOCNROINT]) return estadosManuales[f.DOCNROINT]; // override manual
+  const total   = parseFloat(f.TOTAL || 0);
+  const pagado  = pagadoPorFactura[f.DOCNROINT] || 0;
+  if (pagado <= 0)             return 'Pendiente';
+  if (pagado >= total * 0.999) return 'Pagada';
+  return 'Parcial';
+}
+
+// Guardar estado manual en Sheets via GET (evita CORS)
+async function toggleEstadoManual(docnroint) {
+  const actual = estadosManuales[docnroint];
+  const nuevo  = actual === 'Pagada.' ? '' : 'Pagada.';
+  try {
+    const url = SHEETS_API_FACTURAS + '?tipo=setEstadoManual&docnroint=' + encodeURIComponent(docnroint) + '&estado=' + encodeURIComponent(nuevo);
+    const res  = await fetch(url);
+    const json = await res.json();
+    if (json.ok) {
+      if (nuevo === '') delete estadosManuales[docnroint];
+      else estadosManuales[docnroint] = nuevo;
+      filtrarFacturas();
+    } else {
+      alert('Error al guardar: ' + (json.error || 'desconocido'));
+    }
+  } catch(e) {
+    alert('Error de conexión: ' + e.message);
+  }
+}
+
+function filtrarFacturas() {
+  const busq   = (document.getElementById('facturaProveedorSearch').value || '').toLowerCase();
+  const desde  = document.getElementById('facturaDesde').value;
+  const hasta  = document.getElementById('facturaHasta').value;
+  const estado = document.getElementById('facturaEstado').value;
+
+  // Normalizar fecha a YYYY-MM-DD para comparar/filtrar
+  function fechaISO(f) {
+    if (!f) return '';
+    const s = String(f).trim().substring(0, 10);
+    if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s.split("-").reverse().join("-"); // DD-MM-YYYY → YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;                                    // ya es YYYY-MM-DD
+    return s;
+  }
+
+  let filtradas = facturasData.filter(f => {
+    if (busq && !f.PROVEEDOR.toLowerCase().includes(busq)) return false;
+    const fechaF = fechaISO(f.FECHA);
+    if (desde && fechaF < desde) return false;
+    if (hasta && fechaF > hasta) return false;
+    const est = estadoFactura(f);
+    if (estado && est !== estado) return false;
+    return true;
+  });
+
+  // Ordenar por fecha descendente
+  filtradas.sort((a, b) => fechaISO(b.FECHA).localeCompare(fechaISO(a.FECHA)));
+
+  renderFacturasKpis(filtradas);
+  renderFacturasTabla(filtradas);
+}
+
+function renderFacturasKpis(facturas) {
+  let totalMonto = 0, totalPagado = 0, totalPendiente = 0;
+  let countPagadas = 0, countParciales = 0, countPendientes = 0;
+
+  facturas.forEach(f => {
+    const total  = parseFloat(f.TOTAL || 0);
+    const pagado = pagadoPorFactura[f.DOCNROINT] || 0;
+    const pend   = Math.max(0, total - pagado);
+    totalMonto     += total;
+    totalPagado    += pagado;
+    totalPendiente += pend;
+    const est = estadoFactura(f);
+    if (est === 'Pagada')    countPagadas++;
+    else if (est === 'Parcial') countParciales++;
+    else countPendientes++;
+  });
+
+  document.getElementById('facturasKpis').innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Total facturas</div>
+      <div style="font-size:22px;font-weight:600;color:var(--text);">${facturas.length}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">${countPagadas} pagadas · ${countParciales} parciales · ${countPendientes} pendientes</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Monto total</div>
+      <div style="font-size:22px;font-weight:600;color:var(--text);">${fmt(totalMonto)}</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Pagado</div>
+      <div style="font-size:22px;font-weight:600;color:#3A7D6B;">${fmt(totalPagado)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">${countPagadas + countParciales} con pagos</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Pendiente</div>
+      <div style="font-size:22px;font-weight:600;color:#e05252;">${fmt(totalPendiente)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">${countPendientes + countParciales} facturas</div>
+    </div>`;
+}
+
+function renderFacturasTabla(facturas) {
+  const rows     = document.getElementById('facturasRows');
+  const empty    = document.getElementById('facturasEmpty');
+  const contador = document.getElementById('facturasContador');
+
+  if (!facturas.length) {
+    rows.innerHTML = '';
+    empty.style.display = 'block';
+    contador.textContent = '';
+    return;
+  }
+  empty.style.display = 'none';
+  contador.textContent = facturas.length + ' facturas';
+
+  // Normalizar fecha para mostrar siempre como DD-MM-YYYY
+  function fechaDisplay(f) {
+    if (!f) return '-';
+    const s = String(f).trim().substring(0, 10);
+    if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s;           // ya es DD-MM-YYYY
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s.split("-").reverse().join("-"); // YYYY-MM-DD
+    return s;
+  }
+
+  rows.innerHTML = facturas.map(f => {
+    const total  = parseFloat(f.TOTAL || 0);
+    const pagado = pagadoPorFactura[f.DOCNROINT] || 0;
+    const pend   = Math.max(0, total - pagado);
+    const est    = estadoFactura(f);
+    const estColor = est === 'Pagada' ? '#3A7D6B' : est === 'Parcial' ? '#B07B1A' : '#e05252';
+    const estBg    = est === 'Pagada' ? 'rgba(58,125,107,0.1)' : est === 'Parcial' ? 'rgba(244,161,66,0.12)' : 'rgba(224,82,82,0.1)';
+
+    const esManual   = estadosManuales[f.DOCNROINT] === 'Pagada.';
+    const btnLabel   = esManual ? 'Quitar pago' : 'Marcar pagada';
+    const btnStyle   = esManual
+      ? 'font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid #aaa;background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;'
+      : 'font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:inherit;';
+    return `<div style="display:grid;grid-template-columns:1fr 140px 110px 110px 110px 90px 110px;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);align-items:center;">
+      <span style="font-size:12px;font-weight:500;">${f.PROVEEDOR || '-'}</span>
+      <span style="font-size:11px;color:var(--muted);">${f.COMPROBANTE || f.DOCNROINT || '-'}</span>
+      <span style="font-size:12px;color:var(--muted);">${fechaDisplay(f.FECHA)}</span>
+      <span style="font-size:12px;text-align:right;font-weight:500;">${fmt(total)}</span>
+      <span style="font-size:12px;text-align:right;color:${pend > 0 ? '#e05252' : 'var(--muted)'};">${fmt(pend)}</span>
+      <span style="font-size:11px;font-weight:600;text-align:center;padding:3px 8px;border-radius:20px;background:${estBg};color:${estColor};">${est}</span>
+      <button style="${btnStyle}" onclick="toggleEstadoManual('${f.DOCNROINT.replace(/'/g, "\'")}')">
+        ${btnLabel}
+      </button>
+    </div>`;
+  }).join('');
+}
+
+// Cerrar dropdown al hacer click afuera
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#detalle-section')) {
+    const dd = document.getElementById('clienteDropdown');
+    if (dd) dd.style.display = 'none';
+  }
+});
+
+// Cargar detalle al iniciar
+cargarDetalle();
+
+
+
+  // ── LOGIN ──
+  function doLogin() {
+    const user = document.getElementById('loginUser').value.trim();
+    const pass = document.getElementById('loginPass').value;
+    if (user === 'admin' && pass === 'maximo2002') {
+      document.getElementById('loginOverlay').classList.add('hidden');
+      loadData();
+      cargarDetalleMensual();
+    } else {
+      document.getElementById('loginError').style.display = 'block';
+    }
+  }
+  document.addEventListener('keydown', function(e) {
+    const overlay = document.getElementById('loginOverlay');
+    if (e.key === 'Enter' && overlay && !overlay.classList.contains('hidden')) {
+      doLogin();
+    }
+  });
+
+</script>
+</body>
+</html>
