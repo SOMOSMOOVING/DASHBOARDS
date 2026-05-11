@@ -1312,7 +1312,11 @@ function filtrarFacturas() {
     if (desde && fechaF < desde) return false;
     if (hasta && fechaF > hasta) return false;
     const est = estadoFactura(f);
-    if (estado && est !== estado) return false;
+    // "Pagada" en el filtro debe incluir también "Pagada." (manual)
+    if (estado) {
+      if (estado === 'Pagada' && est !== 'Pagada' && est !== 'Pagada.') return false;
+      else if (estado !== 'Pagada' && est !== estado) return false;
+    }
     return true;
   });
 
