@@ -1539,11 +1539,11 @@ cargarDetalle();
         DEPOSITO:           String(r.DEPOSITO || '').trim(),
         FAMILIA:            String(r.FAMILIA || '').trim(),
         SUBFAMILIA:         String(r.SUBFAMILIA || '').trim(),
-        CANTIDAD:           parseFloat(r.CANTIDAD1 || 0),
-        PRECIO:             parseFloat(r.PRECIOUNIDADSTOCK1 || 0),
+        CANTIDAD:           parseFloat(r.CANTIDAD1 || r.CANTIDAD || 0),
+        PRECIO:             parseFloat(r.PRECIOUNIDADSTOCK1 || r.PRECIO || 0),
         IMPORTE:            parseFloat(r.IMPORTE || 0),
         STOCKDISPONIBLE:    parseFloat(r.STOCKDISPONIBLE || 0),
-      })).filter(r => r.PRODUCTO && r.CANTIDAD > 0);
+      })).filter(r => r.PRODUCTO);
 
       // Poblar filtros
       const depositos = [...new Set(stockData.map(r => r.DEPOSITO))].sort();
