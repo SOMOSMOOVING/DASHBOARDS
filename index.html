@@ -1329,13 +1329,13 @@ function renderFacturasKpis(facturas) {
 
   facturas.forEach(f => {
     const total  = parseFloat(f.TOTAL || 0);
-    const pagado = pagadoPorFactura[f.DOCNROINT] || 0;
-    const pend   = Math.max(0, total - pagado);
+    const est    = estadoFactura(f);
+    const pagado = (est === 'Pagada.') ? total : (pagadoPorFactura[f.DOCNROINT] || 0);
+    const pend   = (est === 'Pagada.') ? 0 : Math.max(0, total - pagado);
     totalMonto     += total;
     totalPagado    += pagado;
     totalPendiente += pend;
-    const est = estadoFactura(f);
-    if (est === 'Pagada')    countPagadas++;
+    if (est === 'Pagada' || est === 'Pagada.') countPagadas++;
     else if (est === 'Parcial') countParciales++;
     else countPendientes++;
   });
@@ -1388,10 +1388,11 @@ function renderFacturasTabla(facturas) {
   rows.innerHTML = facturas.map(f => {
     const total  = parseFloat(f.TOTAL || 0);
     const pagado = pagadoPorFactura[f.DOCNROINT] || 0;
-    const pend   = Math.max(0, total - pagado);
     const est    = estadoFactura(f);
-    const estColor = est === 'Pagada' ? '#3A7D6B' : est === 'Parcial' ? '#B07B1A' : '#e05252';
-    const estBg    = est === 'Pagada' ? 'rgba(58,125,107,0.1)' : est === 'Parcial' ? 'rgba(244,161,66,0.12)' : 'rgba(224,82,82,0.1)';
+    const pend   = (est === 'Pagada.' ) ? 0 : Math.max(0, total - pagado);
+    const esPagada = est === 'Pagada' || est === 'Pagada.';
+    const estColor = esPagada ? '#3A7D6B' : est === 'Parcial' ? '#B07B1A' : '#e05252';
+    const estBg    = esPagada ? 'rgba(58,125,107,0.1)' : est === 'Parcial' ? 'rgba(244,161,66,0.12)' : 'rgba(224,82,82,0.1)';
 
     const esManual   = estadosManuales[f.DOCNROINT] === 'Pagada.';
     const btnLabel   = esManual ? 'Quitar pago' : 'Marcar pagada';
