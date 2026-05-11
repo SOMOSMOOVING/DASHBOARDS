@@ -256,9 +256,9 @@
       Clientes
     </a>
     <div class="nav-label">Finanzas</div>
-    <a class="nav-item" href="#">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2"/><line x1="1" y1="7" x2="15" y2="7"/></svg>
-      Cobranzas
+    <a class="nav-item" href="#" onclick="navegarA('stock');return false;" id="nav-stock">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="2"/><line x1="5" y1="1" x2="5" y2="15"/><line x1="1" y1="6" x2="15" y2="6"/><line x1="1" y1="11" x2="15" y2="11"/></svg>
+      Stock
     </a>
     <div class="nav-label">Operaciones</div>
     <a class="nav-item" href="#">
@@ -467,6 +467,52 @@
 
         <div id="facturasContador" style="margin-top:10px;font-size:12px;color:var(--muted);text-align:right;"></div>
       </div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- PAGE: STOCK                               -->
+<!-- ══════════════════════════════════════════ -->
+<div id="page-stock" style="display:none;">
+  <div id="stockKpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;"></div>
+
+  <!-- Filtros -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+    <div style="flex:1;min-width:180px;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Depósito</div>
+      <select id="stockDeposito" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit;" onchange="filtrarStock()">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div style="flex:1;min-width:180px;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Familia</div>
+      <select id="stockFamilia" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit;" onchange="filtrarStock()">
+        <option value="">Todas</option>
+      </select>
+    </div>
+    <div style="flex:2;min-width:200px;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Buscar producto</div>
+      <input id="stockBuscar" type="text" placeholder="Nombre o código..." style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-family:inherit;" oninput="filtrarStock()">
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);">
+      <div style="font-size:13px;font-weight:600;color:var(--text);">Detalle de Stock</div>
+      <div id="stockContador" style="font-size:11px;color:var(--muted);"></div>
+    </div>
+    <!-- Header -->
+    <div style="display:grid;grid-template-columns:2fr 120px 1fr 130px 130px 130px;gap:8px;padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--border);">
+      <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;">Producto</span>
+      <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;">Código</span>
+      <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;">Depósito</span>
+      <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;text-align:right;">Cantidad</span>
+      <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;text-align:right;">Precio Unit.</span>
+      <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;text-align:right;">Valor Total</span>
+    </div>
+    <div id="stockRows"></div>
+    <div id="stockEmpty" style="display:none;padding:40px;text-align:center;color:var(--muted);font-size:13px;">No se encontraron productos</div>
+  </div>
+</div>
     </div><!-- fin page-facturas -->
   </div>
 </div>
@@ -876,7 +922,7 @@ async function loadData(forceRefresh = false) {
 // ══════════════════════════════════════════
 function navegarA(pagina) {
   // Ocultar todas las páginas
-  ['dashboard', 'clientes', 'facturas'].forEach(p => {
+  ['dashboard', 'clientes', 'facturas', 'stock'].forEach(p => {
     const el = document.getElementById('page-' + p);
     if (el) el.style.display = 'none';
     const nav = document.getElementById('nav-' + p);
@@ -890,13 +936,14 @@ function navegarA(pagina) {
   if (navEl) navEl.classList.add('active');
 
   // Actualizar título del topbar
-  const titles = { dashboard: 'Dashboard de ventas', clientes: 'Clientes', facturas: 'Facturas de Compra' };
+  const titles = { dashboard: 'Dashboard de ventas', clientes: 'Clientes', facturas: 'Facturas de Compra', stock: 'Stock' };
   document.querySelector('.topbar-title').textContent = titles[pagina] || pagina;
 
   // Re-renderizar gráfico si vuelve a dashboard (por resize)
   if (pagina === 'dashboard' && chartVentas) chartVentas.resize();
   if (pagina === 'clientes' && chartPie) setTimeout(() => chartPie.resize(), 50);
   if (pagina === 'facturas') cargarFacturas();
+  if (pagina === 'stock') cargarStock();
 }
 
 
@@ -1448,6 +1495,174 @@ cargarDetalle();
       doLogin();
     }
   });
+
+
+  // ══════════════════════════════════════════
+  // STOCK
+  // ══════════════════════════════════════════
+  const SHEETS_API_STOCK = 'https://script.google.com/macros/s/AKfycbzJ2mZC6NaoRDF6X2Nl-nED5hPkHVxS3PKwoRmH6G-Azt4eMfBoKYVWW8kT1pRUdPDK/exec';
+  let stockData = [];
+  let stockLoaded = false;
+
+  async function cargarStock() {
+    if (stockLoaded) { filtrarStock(); return; }
+    document.getElementById('stockRows').innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-size:13px;">Cargando stock...</div>';
+    try {
+      const res  = await fetch(SHEETS_API_STOCK + '?tipo=stock');
+      const json = await res.json();
+      stockData  = (json.data || []).map(r => ({
+        PRODUCTO:           String(r.PRODUCTO || '').trim(),
+        PRODUCTOCODIGO:     String(r.PRODUCTOCODIGO || '').trim(),
+        DEPOSITO:           String(r.DEPOSITO || '').trim(),
+        FAMILIA:            String(r.FAMILIA || '').trim(),
+        SUBFAMILIA:         String(r.SUBFAMILIA || '').trim(),
+        CANTIDAD:           parseFloat(r.CANTIDAD1 || 0),
+        PRECIO:             parseFloat(r.PRECIOUNIDADSTOCK1 || 0),
+        IMPORTE:            parseFloat(r.IMPORTE || 0),
+        STOCKDISPONIBLE:    parseFloat(r.STOCKDISPONIBLE || 0),
+      })).filter(r => r.PRODUCTO && r.CANTIDAD > 0);
+
+      // Poblar filtros
+      const depositos = [...new Set(stockData.map(r => r.DEPOSITO))].sort();
+      const familias  = [...new Set(stockData.map(r => r.FAMILIA).filter(Boolean))].sort();
+      const selDep    = document.getElementById('stockDeposito');
+      const selFam    = document.getElementById('stockFamilia');
+      depositos.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; selDep.appendChild(o); });
+      familias.forEach(f  => { const o = document.createElement('option'); o.value = f; o.textContent = f; selFam.appendChild(o); });
+
+      stockLoaded = true;
+      filtrarStock();
+    } catch(e) {
+      document.getElementById('stockRows').innerHTML = '<div style="padding:40px;text-align:center;color:#e05252;font-size:13px;">Error: ' + e.message + '</div>';
+    }
+  }
+
+  function filtrarStock() {
+    const dep    = document.getElementById('stockDeposito').value;
+    const fam    = document.getElementById('stockFamilia').value;
+    const buscar = (document.getElementById('stockBuscar').value || '').toLowerCase();
+
+    let filtrados = stockData.filter(r => {
+      if (dep    && r.DEPOSITO !== dep) return false;
+      if (fam    && r.FAMILIA  !== fam) return false;
+      if (buscar && !r.PRODUCTO.toLowerCase().includes(buscar) && !r.PRODUCTOCODIGO.toLowerCase().includes(buscar)) return false;
+      return true;
+    });
+
+    // Ordenar por familia, subfamilia, producto
+    filtrados.sort((a, b) => {
+      if (a.FAMILIA   !== b.FAMILIA)   return a.FAMILIA.localeCompare(b.FAMILIA);
+      if (a.SUBFAMILIA !== b.SUBFAMILIA) return a.SUBFAMILIA.localeCompare(b.SUBFAMILIA);
+      return a.PRODUCTO.localeCompare(b.PRODUCTO);
+    });
+
+    renderStockKpis(filtrados);
+    renderStockTabla(filtrados);
+  }
+
+  function renderStockKpis(data) {
+    const totalProductos = new Set(data.map(r => r.PRODUCTOCODIGO)).size;
+    const totalUnidades  = data.reduce((a, r) => a + r.CANTIDAD, 0);
+    const totalValor     = data.reduce((a, r) => a + r.IMPORTE, 0);
+    const totalDepositos = new Set(data.map(r => r.DEPOSITO)).size;
+
+    document.getElementById('stockKpis').innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Productos distintos</div>
+        <div style="font-size:22px;font-weight:600;color:var(--text);">${totalProductos.toLocaleString('es-AR')}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Total unidades</div>
+        <div style="font-size:22px;font-weight:600;color:var(--text);">${totalUnidades.toLocaleString('es-AR')}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Valor total</div>
+        <div style="font-size:22px;font-weight:600;color:var(--text);">${fmt(totalValor)}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Depósitos</div>
+        <div style="font-size:22px;font-weight:600;color:var(--text);">${totalDepositos}</div>
+      </div>`;
+  }
+
+  function renderStockTabla(data) {
+    const rows    = document.getElementById('stockRows');
+    const empty   = document.getElementById('stockEmpty');
+    const contador = document.getElementById('stockContador');
+
+    if (!data.length) {
+      rows.innerHTML = '';
+      empty.style.display = 'block';
+      contador.textContent = '';
+      return;
+    }
+    empty.style.display = 'none';
+    contador.textContent = data.length + ' productos';
+
+    // Agrupar por familia → subfamilia
+    const grupos = {};
+    data.forEach(r => {
+      const fam = r.FAMILIA || 'Sin familia';
+      const sub = r.SUBFAMILIA || 'Sin subfamilia';
+      if (!grupos[fam]) grupos[fam] = {};
+      if (!grupos[fam][sub]) grupos[fam][sub] = [];
+      grupos[fam][sub].push(r);
+    });
+
+    let html = '';
+    Object.entries(grupos).sort((a,b) => a[0].localeCompare(b[0])).forEach(([fam, subs]) => {
+      const totalFam = Object.values(subs).flat().reduce((a, r) => a + r.IMPORTE, 0);
+      const cantFam  = Object.values(subs).flat().reduce((a, r) => a + r.CANTIDAD, 0);
+      const famId    = 'fam-' + fam.replace(/[^a-z0-9]/gi, '_');
+
+      html += `<div style="background:var(--bg);padding:8px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onclick="toggleGrupo('${famId}')">
+        <span style="font-size:12px;font-weight:600;color:var(--accent);">▾ ${fam}</span>
+        <span style="font-size:11px;color:var(--muted);">${cantFam.toLocaleString('es-AR')} u. · ${fmt(totalFam)}</span>
+      </div>
+      <div id="${famId}">`;
+
+      Object.entries(subs).sort((a,b) => a[0].localeCompare(b[0])).forEach(([sub, prods]) => {
+        const totalSub = prods.reduce((a, r) => a + r.IMPORTE, 0);
+        const cantSub  = prods.reduce((a, r) => a + r.CANTIDAD, 0);
+        const subId    = famId + '_' + sub.replace(/[^a-z0-9]/gi, '_');
+
+        html += `<div style="background:rgba(0,0,0,0.02);padding:7px 16px 7px 28px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onclick="toggleGrupo('${subId}')">
+          <span style="font-size:11px;font-weight:500;color:var(--text);">▾ ${sub}</span>
+          <span style="font-size:11px;color:var(--muted);">${cantSub.toLocaleString('es-AR')} u. · ${fmt(totalSub)}</span>
+        </div>
+        <div id="${subId}">`;
+
+        prods.forEach(r => {
+          html += `<div style="display:grid;grid-template-columns:2fr 120px 1fr 130px 130px 130px;gap:8px;padding:8px 16px 8px 40px;border-bottom:1px solid var(--border);align-items:center;">
+            <span style="font-size:12px;">${r.PRODUCTO}</span>
+            <span style="font-size:11px;color:var(--muted);">${r.PRODUCTOCODIGO}</span>
+            <span style="font-size:11px;color:var(--muted);">${r.DEPOSITO}</span>
+            <span style="font-size:12px;text-align:right;">${r.CANTIDAD.toLocaleString('es-AR')}</span>
+            <span style="font-size:12px;text-align:right;">${fmt(r.PRECIO)}</span>
+            <span style="font-size:12px;text-align:right;font-weight:500;">${fmt(r.IMPORTE)}</span>
+          </div>`;
+        });
+
+        html += `</div>`;
+      });
+
+      html += `</div>`;
+    });
+
+    rows.innerHTML = html;
+  }
+
+  function toggleGrupo(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    // Cambiar flecha
+    const btn = el.previousElementSibling;
+    if (btn) {
+      const span = btn.querySelector('span');
+      if (span) span.textContent = span.textContent.replace('▾', '▸').replace('▸', el.style.display === 'none' ? '▸' : '▾');
+    }
+  }
 
 </script>
 </body>
